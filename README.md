@@ -29,23 +29,32 @@ cell drifts slightly right as it rises, so the tongues lean toward the window.
 The jets travel right too, and any that leave the right side are replaced on
 the left, which is what makes the band travel without ever shortening.
 
-**Particle drift** (`js/drift.js`) is a grid of circular dots, clumped with
-gaps punched through the clumps, racing rightward off the edge of the screen.
+**ASCII drift** (`js/drift.js`) is a text grid of random ASCII glyphs, clumped
+into loose shapes with gaps through them, tearing rightward off the edge of
+the screen at 620px/s.
 
 There is no particle list, and nothing is spawned or recycled. Whether a cell
-holds a dot is a pure function of its coordinates in an imaginary infinite
+holds a glyph is a pure function of its coordinates in an imaginary infinite
 field: two octaves of value noise, thresholded. A coarse octave makes the
 clumps, a finer one eats the holes. The field scrolls, the visible window onto
 it moves, and cells are evaluated fresh each frame. That is what makes the band
 endless — there is no state to run out of, and no seam to line up, because the
 pattern is never stored in the first place.
 
-Dots thin out toward the edges of the band rather than fading, so every dot
-that is drawn stays fully solid. Each frame collects them into one path per
-colour and brightness, so drawing the band is a handful of fills.
+Which glyph a cell gets is not uniform noise. `RAMP` runs light to heavy, and a
+cell picks from it by how far inside its clump it sits, so clump cores come out
+dense and their edges dissolve into stray punctuation. The field crowds just
+above the threshold, so that depth is gamma-corrected on the way in; without
+that, nearly every cell lands on light punctuation and the mass never reads as
+a mass.
 
-Set `MONO` to render it as the reference does, one ink colour across three
-brightnesses, instead of the site palette.
+Every glyph, in every colour and brightness, is drawn once into one small
+sheet at startup. A frame is then a few hundred blits out of that sheet rather
+than a few hundred `fillText` calls, which at this speed is the difference
+between holding the frame rate and not.
+
+Set `MONO` to render it in one ink colour across three brightnesses, as the
+reference clip does, instead of the site palette.
 
 Knobs worth knowing, all at the top of their file:
 
@@ -55,9 +64,10 @@ Knobs worth knowing, all at the top of their file:
 | `fire.js` | `LEAN` | how tall the flames run |
 | `fire.js` | `WIND` | how hard they lean toward the window |
 | `fire.js` | `JETS` | one flame tongue per this many columns |
-| `drift.js` | `SPEED` | how fast the dots travel; negate it to go left |
-| `drift.js` | `PITCH` | grid spacing, and with it the dot size |
+| `drift.js` | `SPEED` | how fast the glyphs travel; negate it to go left |
+| `drift.js` | `ROW` | text row height, and with it the glyph size |
 | `drift.js` | `LEVEL` | occupancy threshold — higher means sparser |
+| `drift.js` | `RAMP` | the glyph set, ordered light to heavy |
 | `drift.js` | `CLUMP_X`/`CLUMP_Y` | how big a clump is, in cells |
 | `drift.js` | `MONO` | one ink colour instead of the palette |
 | `drift.js` | `COLORS` | the palette; repeated entries are drawn more often |
