@@ -1,0 +1,249 @@
+/* ==========================================================================
+   Deadly Foods — Deadly Labs Inc.
+   Palette   paper #efefef · card #fff · ink #000
+             fire  #8f2f06 → #fbb42b   (built in js/fire.js)
+   Type      Poppins, geometric grotesque, one family across both pages
+   ========================================================================== */
+
+:root{
+  --paper:#efefef;
+  --card:#ffffff;
+  --ink:#000000;
+
+  /* the window sets the whole grid: both side panels are measured off it */
+  --card-w: clamp(300px, 36.2vw, 780px);
+  --card-ar: 695 / 445;
+  --tuck: 42px;            /* how far the panels run under the window */
+
+  --font: "Poppins", "Century Gothic", "Futura", "Avenir Next", system-ui, sans-serif;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html,body{ height:100%; }
+
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+
+a{ color:inherit; }
+
+:where(a,button):focus-visible{
+  outline:2px solid var(--ink);
+  outline-offset:4px;
+}
+
+/* --------------------------------------------------------------- stage --- */
+
+.stage{
+  position:relative;
+  width:100%;
+  height:100svh;
+  overflow:hidden;
+}
+
+.panel{
+  position:absolute;
+  z-index:1;
+  pointer-events:none;
+}
+
+.panel canvas{
+  display:block;
+  width:100%;
+  height:100%;
+}
+
+/* fire: left edge of the screen to just under the window */
+.panel--fire{
+  left:0;
+  right:calc(50% + var(--card-w) / 2 - var(--tuck));
+  bottom:41.5%;
+  height:19.5%;
+}
+
+/* colour drift: from just under the window out to the right edge */
+.panel--drift{
+  left:calc(50% + var(--card-w) / 2 - var(--tuck));
+  right:0;
+  top:32%;
+  height:34%;
+}
+
+/* -------------------------------------------------------------- window --- */
+
+.window{
+  position:absolute;
+  z-index:3;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:var(--card-w);
+  aspect-ratio:var(--card-ar);
+  container-type:inline-size;
+
+  display:flex;
+  flex-direction:column;
+  background:var(--card);
+  box-shadow:0 1px 2px rgb(0 0 0 / .06), 0 18px 44px -18px rgb(0 0 0 / .22);
+}
+
+.window__bar{
+  flex:0 0 auto;
+  display:flex;
+  gap:1.4cqw;
+  align-items:center;
+  padding:1.55cqw 1.9cqw;
+}
+
+.dot{
+  width:1.3cqw;
+  height:1.3cqw;
+  min-width:6px;
+  min-height:6px;
+  border-radius:50%;
+}
+.dot--red{   background:#ff5f57; }
+.dot--amber{ background:#febc2e; }
+.dot--green{ background:#28c840; }
+
+.window__body{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:0.9cqw;
+  padding:0 4cqw 3.6cqw;
+  text-align:center;
+}
+
+.title{
+  margin:0;
+  font-size:10.6cqw;
+  font-weight:700;
+  letter-spacing:-0.005em;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.enter{
+  font-size:5.9cqw;
+  font-weight:600;
+  line-height:1.1;
+  letter-spacing:-0.01em;
+  text-decoration-line:underline;
+  text-decoration-thickness:0.05em;
+  text-underline-offset:0.1em;
+  white-space:nowrap;
+  transition:opacity .18s ease;
+}
+.enter:hover{ opacity:.55; }
+
+/* ---------------------------------------------------------------- logo --- */
+
+.logo{
+  position:absolute;
+  z-index:4;
+  left:3.1vw;
+  bottom:-1.6vh;
+  width:clamp(120px, 12.5vw, 260px);
+  line-height:0;
+}
+
+.logo img,
+.logo__svg{ width:100%; height:auto; }
+.logo img[hidden]{ display:none; }
+
+/* ------------------------------------------------------- product page --- */
+
+.page-products{ background:#fff; }
+
+.shelf{
+  display:grid;
+  place-items:center;
+  height:100svh;
+  padding:6vmin;
+}
+
+.product{
+  display:grid;
+  place-items:center;
+  width:clamp(220px, 17vw, 360px);
+  aspect-ratio:322 / 330;
+  padding:6% 4%;
+  border:1px solid var(--ink);
+}
+
+.product__name{
+  margin:0;
+  font-size:clamp(28px, 4.4vmin, 58px);
+  font-weight:700;
+  line-height:1.75;
+  letter-spacing:-0.01em;
+  margin-right:-0.01em;      /* cancel the trailing letter-space so it centres */
+  text-align:center;
+  text-transform:uppercase;
+}
+
+.back{
+  position:fixed;
+  z-index:2;
+  top:3.2vmin;
+  left:3.2vmin;
+  font-size:14px;
+  font-weight:500;
+  letter-spacing:.02em;
+  text-decoration-line:underline;
+  text-underline-offset:.22em;
+  opacity:.35;
+  transition:opacity .18s ease;
+}
+.back:hover,
+.back:focus-visible{ opacity:1; }
+
+/* ---------------------------------------------------- page transition --- */
+
+.stage,.shelf,.back,.logo{ transition:opacity .28s ease; }
+body.is-leaving .stage,
+body.is-leaving .shelf,
+body.is-leaving .back,
+body.is-leaving .logo{ opacity:0; }
+
+/* ---------------------------------------------------------- narrow up --- */
+
+@media (max-width: 900px){
+  :root{ --card-w: min(86vw, 560px); }
+
+  .panel--fire{
+    left:0; right:0;
+    bottom:17%;
+    height:20%;
+  }
+  .panel--drift{
+    left:0; right:0;
+    top:7%;
+    height:24%;
+  }
+  .logo{
+    left:50%;
+    transform:translateX(-50%);
+    bottom:3vh;
+    width:min(38vw, 190px);
+  }
+  .product{ width:min(68vw, 320px); }
+}
+
+@media (max-width: 560px){
+  .title{ font-size:11.4cqw; }
+  .enter{ font-size:6.2cqw; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .stage,.shelf,.back,.logo,.enter{ transition:none; }
+}

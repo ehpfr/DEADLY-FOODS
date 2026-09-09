@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deadly Foods — Salud Letal</title>
+<meta name="description" content="Deadly Foods, Deadly Labs Inc. Salud letal. Conoce nuestros productos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap">
+<noscript><link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-home">
+
+  <main class="stage">
+
+    <!-- infinite fire, drifting right toward the window -->
+    <div class="panel panel--fire" aria-hidden="true">
+      <canvas id="fire"></canvas>
+    </div>
+
+    <!-- infinite colour drift, travelling left toward the window -->
+    <div class="panel panel--drift" aria-hidden="true">
+      <canvas id="drift"></canvas>
+    </div>
+
+    <section class="window">
+      <div class="window__bar">
+        <span class="dot dot--red"></span>
+        <span class="dot dot--amber"></span>
+        <span class="dot dot--green"></span>
+      </div>
+      <div class="window__body">
+        <h1 class="title">[SALUD LETAL]</h1>
+        <a class="enter" href="productos.html">conoce nuestros productos</a>
+      </div>
+    </section>
+
+    <a class="logo" href="index.html" aria-label="Deadly Foods, Deadly Labs Inc.">
+      <img src="assets/logo.png" alt="" id="logo-img" hidden>
+      <svg class="logo__svg" viewBox="0 0 320 152" role="img" aria-hidden="true">
+        <defs>
+          <filter id="torn" x="-12%" y="-18%" width="124%" height="136%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02 0.11" numOctaves="5" seed="19" result="n"/>
+            <feDisplacementMap in="SourceGraphic" in2="n" scale="17" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <filter id="mottle" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="4" seed="5" result="t"/>
+            <feColorMatrix in="t" type="matrix"
+              values="0 0 0 0 0.42  0 0 0 0 0.40  0 0 0 0 0.36  0 0 0 -0.55 0.34"/>
+          </filter>
+          <filter id="speck" x="0" y="0" width="100%" height="100%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="23" result="t"/>
+            <feColorMatrix in="t" type="matrix"
+              values="0 0 0 0 0.25  0 0 0 0 0.23  0 0 0 0 0.2  0 0 0 -0.9 0.42"/>
+          </filter>
+          <filter id="ink" x="-8%" y="-12%" width="116%" height="124%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.42 0.55" numOctaves="4" seed="9" result="g"/>
+            <feDisplacementMap in="SourceGraphic" in2="g" scale="3.2" xChannelSelector="R" yChannelSelector="G"/>
+          </filter>
+          <clipPath id="sheet"><rect x="12" y="14" width="296" height="124"/></clipPath>
+        </defs>
+
+        <g filter="url(#torn)">
+          <rect x="12" y="14" width="296" height="124" fill="#d7d2c6"/>
+          <g clip-path="url(#sheet)">
+            <rect x="12" y="14" width="296" height="124" filter="url(#mottle)"/>
+            <rect x="12" y="14" width="296" height="124" filter="url(#speck)"/>
+            <path d="M12 96 Q140 80 308 104" fill="none" stroke="#a49e90" stroke-width="1.2" opacity=".55"/>
+            <path d="M232 14 Q246 74 226 138" fill="none" stroke="#a49e90" stroke-width="1" opacity=".4"/>
+          </g>
+        </g>
+
+        <g filter="url(#ink)" fill="#1a1815" font-family="Poppins, Archivo, Helvetica, Arial, sans-serif">
+          <text x="32" y="74" font-size="54" font-weight="800"
+                textLength="240" lengthAdjust="spacingAndGlyphs">DEADLY</text>
+          <text x="32" y="116" font-size="54" font-weight="800"
+                textLength="222" lengthAdjust="spacingAndGlyphs">FOODS</text>
+          <text x="34" y="136" font-size="15" font-weight="500"
+                font-family="ui-monospace, 'Courier New', monospace"
+                textLength="186" lengthAdjust="spacingAndGlyphs">Deadly Labs Inc.</text>
+        </g>
+      </svg>
+    </a>
+
+  </main>
+
+  <script src="js/fire.js"></script>
+  <script src="js/drift.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
