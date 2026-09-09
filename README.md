@@ -30,11 +30,18 @@ The jets travel right too, and any that leave the right side are replaced on
 the left, which is what makes the band travel without ever shortening.
 
 **Colour drift** (`js/drift.js`) is a collage of generated marks — scribbles,
-loops, halftones, blobs, filigree, rings. Each is drawn once into its own
-bitmap, then moved leftward toward the window. Marks are planted along a
-cursor that always runs past the right edge, so the band refills itself as
-fast as it empties. Both ends dissolve into the background so nothing pops in
-or out.
+loops, halftones, blobs, filigree, rings — racing rightward, out past the edge
+of the screen. They enter from behind the window as fast as they leave on the
+right, so the band never empties.
+
+Two things make the speed read as speed rather than as a fast slideshow. Each
+frame erases only part of the one before it, so every mark leaves a decaying
+trail behind it, and every mark is soft to begin with. The softness is baked
+into the bitmaps once at startup: filtering the canvas instead would re-blur
+the whole band on every frame, which on a machine without much GPU costs more
+than everything else on the page put together. For the same reason marks are
+blitted from a pool of ready bitmaps and never rotated, so each one is a plain
+axis-aligned copy.
 
 Knobs worth knowing, all at the top of their file:
 
@@ -44,7 +51,9 @@ Knobs worth knowing, all at the top of their file:
 | `fire.js` | `LEAN` | how tall the flames run |
 | `fire.js` | `WIND` | how hard they lean toward the window |
 | `fire.js` | `JETS` | one flame tongue per this many columns |
-| `drift.js` | `SPEED` | how fast the collage travels |
+| `drift.js` | `SPEED` | how fast the collage travels; negate it to go left |
+| `drift.js` | `TRAIL` | share of each frame erased — lower means a longer smear |
+| `drift.js` | `BLUR` | how soft the marks are |
 | `drift.js` | `COLORS` | the palette; repeated entries are drawn more often |
 | `drift.js` | `DECK` | which marks appear, how often, and how big |
 

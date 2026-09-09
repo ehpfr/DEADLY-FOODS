@@ -1,15 +1,27 @@
 /* Deadly Foods — infinite colour drift.
  *
  * A collage of generated marks (scribbles, halftones, blobs, filigree, rings)
- * that travels leftward toward the centre window. Marks are pre-rendered once
- * into their own bitmaps, then blitted each frame, so the band is cheap to
- * animate. New marks are spawned off the right edge as fast as old ones leave
- * on the left, which keeps the band permanently full: no seam, no run-out.
+ * racing rightward, out past the edge of the screen. Marks are blitted from a
+ * pool of bitmaps drawn once at startup, and new ones enter off the left edge
+ * as fast as old ones leave on the right, so the band is permanently full: no
+ * seam, no run-out.
+ *
+ * Speed is the point here, so the band is smeared two ways. Each frame only
+ * partially erases the one before it, which leaves a decaying trail behind
+ * every mark, and every mark is soft to begin with. The softness is baked into
+ * the bitmaps at startup rather than applied as a filter over the canvas: a
+ * filter costs a full re-blur of the band on every single frame, and on a
+ * machine without much GPU that alone halves the frame rate.
  */
 (function (global) {
   "use strict";
 
-  var SPEED = 26;   // css px per second, leftward
+  var SPEED = 210;  // css px per second, rightward
+  var TRAIL = 0.46; // share of the previous frame erased — lower = longer smear
+  var POOL = 56;    // distinct mark bitmaps, reused with fresh scale and tilt
+  var SS = 0.7;     // bitmaps render at this scale; the blur hides the loss
+  var BLUR = 2.6;   // baked into each bitmap once, never re-applied per frame
+  var STEP = 1 / 40;// the band redraws at 40Hz; at this speed the smear covers it
   var INK = "#141414";
   // repeats weight the draw: the artwork is mostly magenta, blue, black and
   // orange, with green and cyan only as occasional accents
@@ -65,16 +77,17 @@
     var cx = w * rand(0.35, 0.65), cy = h * rand(0.35, 0.65);
     var reach = Math.max(w, h) * 0.55;
     c.fillStyle = col;
+    c.beginPath();
     for (var y = step; y < h; y += step) {
       for (var x = step; x < w; x += step) {
         var d = Math.hypot(x - cx, y - cy) / reach;
         var r = (1 - Math.min(1, d)) * step * 0.48;
         if (r <= 0.35) continue;
-        c.beginPath();
+        c.moveTo(x + r, y);
         c.arc(x, y, r, 0, Math.PI * 2);
-        c.fill();
       }
     }
+    c.fill();
   }
 
   function blob(c, w, h) {
@@ -154,10 +167,14 @@
   function speckle(c, w, h, col) {
     c.fillStyle = col;
     var n = 40 + ((Math.random() * 120) | 0);
-    for (var i = 0; i < n; i++) {
-      c.globalAlpha = rand(0.3, 1);
+    for (var band = 0; band < 3; band++) {          // three alpha groups, one fill each
+      c.globalAlpha = 0.35 + band * 0.3;
       c.beginPath();
-      c.arc(rand(0, w), rand(0, h), rand(0.6, 2.2), 0, Math.PI * 2);
+      for (var i = 0; i < n / 3; i++) {
+        var x = rand(0, w), y = rand(0, h), r = rand(0.6, 2.2);
+        c.moveTo(x + r, y);
+        c.arc(x, y, r, 0, Math.PI * 2);
+      }
       c.fill();
     }
     c.globalAlpha = 1;
@@ -210,6 +227,10 @@
     this.w = 0;
     this.h = 0;
     this.cursor = 0;
+    this.acc = 0;
+    this.pool = [];
+    this.mask = null;
+    this.soft = undefined;
     this.resize();
   }
 
@@ -222,93 +243,35 @@
     this.canvas.width = Math.round(r.width * this.dpr);
     this.canvas.height = Math.round(r.height * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    if (this.soft === undefined) {
+      this.soft = typeof this.ctx.filter === "string";
+      if (!this.soft) this.canvas.style.filter = "blur(3.5px)";
+    }
+
     this.marks.length = 0;
-    this.cursor = -this.h * 1.6;
+    this.cursor = this.w;
+    this.acc = 0;
+    this.buildMask();
+    this.buildPool();
     this.fill();
   };
 
-  Drift.prototype.sprite = function (draw, w, h, tint) {
+  // Marks slide out from behind the window on the left and run off the side of
+  // the screen on the right; the band also softens top and bottom. All of that
+  // is static, so it is drawn once and blitted rather than filled every frame.
+  Drift.prototype.buildMask = function () {
+    var w = this.w, h = this.h;
     var cv = document.createElement("canvas");
-    cv.width = Math.max(1, Math.round(w * this.dpr));
-    cv.height = Math.max(1, Math.round(h * this.dpr));
+    cv.width = Math.max(1, Math.round(w));
+    cv.height = Math.max(1, Math.round(h));
     var c = cv.getContext("2d");
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    if (tint) draw(c, w, h, tint()); else draw(c, w, h);
-    return cv;
-  };
 
-  Drift.prototype.spawn = function (x) {
-    var card = dealMark();
-    var h = this.h * rand(card[3], card[4]);
-    var w = h * rand(card[5], card[6]);
-    var bitmap = this.sprite(card[0], w, h, card[2]);
-    this.marks.push({
-      img: bitmap,
-      x: x,
-      y: this.h * 0.5 - h / 2 +
-         (Math.random() + Math.random() - 1) * this.h * 0.46,
-      w: w,
-      h: h,
-      alpha: rand(0.72, 1),
-      speed: SPEED * rand(0.82, 1.22),
-      bob: rand(0, 5),
-      bobRate: rand(0.25, 0.8),
-      phase: rand(0, Math.PI * 2),
-      spin: rand(-0.035, 0.035),
-      spinRate: rand(0.15, 0.5)
-    });
-  };
-
-  // Plant clusters along a cursor that runs ahead of the right edge. The step
-  // is a fraction of a typical mark width, so marks pile into a collage rather
-  // than a queue of separate stamps, and the band can never thin out.
-  Drift.prototype.fill = function () {
-    var guard = 0;
-    while (this.cursor < this.w + this.h * 0.7 && guard++ < 400) {
-      var cluster = 2 + ((Math.random() * 3) | 0);
-      for (var i = 0; i < cluster; i++) {
-        this.spawn(this.cursor + rand(-this.h * 0.26, this.h * 0.26));
-      }
-      this.cursor += rand(this.h * 0.06, this.h * 0.2);
-    }
-  };
-
-  Drift.prototype.tick = function (dt) {
-    this.t += dt;
-    this.cursor -= SPEED * dt;
-
-    var marks = this.marks;
-    for (var i = marks.length - 1; i >= 0; i--) {
-      marks[i].x -= marks[i].speed * dt;
-      if (marks[i].x + marks[i].w < -20) marks.splice(i, 1);
-    }
-    this.fill();
-    this.render();
-  };
-
-  Drift.prototype.render = function () {
-    var c = this.ctx, w = this.w, h = this.h;
-    c.clearRect(0, 0, w, h);
-
-    for (var i = 0; i < this.marks.length; i++) {
-      var m = this.marks[i];
-      var y = m.y + Math.sin(this.t * m.bobRate + m.phase) * m.bob;
-      var a = Math.sin(this.t * m.spinRate + m.phase) * m.spin;
-      c.save();
-      c.globalAlpha = m.alpha;
-      c.translate(m.x + m.w / 2, y + m.h / 2);
-      c.rotate(a);
-      c.drawImage(m.img, -m.w / 2, -m.h / 2, m.w, m.h);
-      c.restore();
-    }
-
-    // dissolve both ends so the loop has no visible entry or exit
-    c.globalCompositeOperation = "destination-out";
     var gx = c.createLinearGradient(0, 0, w, 0);
     gx.addColorStop(0, "rgba(0,0,0,1)");
-    gx.addColorStop(0.07, "rgba(0,0,0,0)");
-    gx.addColorStop(0.95, "rgba(0,0,0,0)");
-    gx.addColorStop(1, "rgba(0,0,0,1)");
+    gx.addColorStop(0.1, "rgba(0,0,0,0)");
+    gx.addColorStop(0.97, "rgba(0,0,0,0)");
+    gx.addColorStop(1, "rgba(0,0,0,0.6)");
     c.fillStyle = gx;
     c.fillRect(0, 0, w, h);
 
@@ -320,11 +283,117 @@
     c.fillStyle = gy;
     c.fillRect(0, 0, w, h);
 
-    c.globalCompositeOperation = "source-over";
-    c.globalAlpha = 1;
+    this.mask = cv;
   };
 
-  Drift.prototype.still = function () { this.render(); };
+  Drift.prototype.sprite = function (draw, w, h, tint) {
+    var pad = this.soft ? Math.ceil(BLUR * 3) : 0;   // room for the blur halo
+    var padCss = pad / SS;
+    var cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(w * SS) + pad * 2);
+    cv.height = Math.max(1, Math.round(h * SS) + pad * 2);
+    var c = cv.getContext("2d");
+    c.setTransform(SS, 0, 0, SS, pad, pad);
+    if (this.soft) c.filter = "blur(" + BLUR + "px)";
+    if (tint) draw(c, w, h, tint()); else draw(c, w, h);
+    return { img: cv, w: w + padCss * 2, h: h + padCss * 2 };
+  };
+
+  // At this speed a fresh bitmap per mark would mean drawing dozens of them a
+  // second, so the marks are drawn once into a pool and each one is reused
+  // with its own scale, tilt and opacity.
+  Drift.prototype.buildPool = function () {
+    this.pool = [];
+    for (var i = 0; i < POOL; i++) {
+      var card = dealMark();
+      var h = this.h * rand(card[3], card[4]);
+      var w = h * rand(card[5], card[6]);
+      this.pool.push(this.sprite(card[0], w, h, card[2]));
+    }
+  };
+
+  Drift.prototype.spawn = function (x) {
+    var art = this.pool[(Math.random() * this.pool.length) | 0];
+    var k = rand(0.72, 1.3);
+    var w = art.w * k, h = art.h * k;
+    this.marks.push({
+      img: art.img,
+      x: x,
+      y: this.h * 0.5 - h / 2 +
+         (Math.random() + Math.random() - 1) * this.h * 0.46,
+      w: w,
+      h: h,
+      alpha: rand(0.7, 0.95),
+      speed: SPEED * rand(0.82, 1.22),
+      bob: rand(0, 5),
+      bobRate: rand(0.25, 0.8),
+      phase: rand(0, Math.PI * 2)
+    });
+  };
+
+  // Clusters are planted along a cursor that stays well off the left edge, far
+  // enough out that even the widest mark is fully hidden when it is born. The
+  // step is a fraction of a typical mark width, so marks pile into a collage
+  // rather than a queue of separate stamps, and the band can never thin out.
+  Drift.prototype.fill = function () {
+    var guard = 0;
+    while (this.cursor > -this.h * 2.6 && guard++ < 600) {
+      var cluster = 2 + ((Math.random() * 3) | 0);
+      for (var i = 0; i < cluster; i++) {
+        this.spawn(this.cursor + rand(-this.h * 0.26, this.h * 0.26));
+      }
+      this.cursor -= rand(this.h * 0.08, this.h * 0.24);
+    }
+  };
+
+  Drift.prototype.tick = function (dt) {
+    this.acc += dt;
+    if (this.acc < STEP) return;
+    var step = this.acc;
+    this.acc = 0;
+
+    this.t += step;
+    this.cursor += SPEED * step;
+
+    var marks = this.marks;
+    for (var i = marks.length - 1; i >= 0; i--) {
+      marks[i].x += marks[i].speed * step;
+      if (marks[i].x > this.w + 40) marks.splice(i, 1);
+    }
+    this.fill();
+    this.render();
+  };
+
+  Drift.prototype.render = function (hard) {
+    var c = this.ctx, w = this.w, h = this.h;
+
+    if (hard) {
+      c.clearRect(0, 0, w, h);
+    } else {
+      // erase only part of the last frame, so what it drew lingers as a trail
+      c.globalCompositeOperation = "destination-out";
+      c.fillStyle = "rgba(0,0,0," + TRAIL + ")";
+      c.fillRect(0, 0, w, h);
+      c.globalCompositeOperation = "source-over";
+    }
+
+    for (var i = 0; i < this.marks.length; i++) {
+      var m = this.marks[i];
+      if (m.x > w || m.x + m.w < 0) continue;
+      c.globalAlpha = m.alpha;
+      c.drawImage(m.img, m.x,
+                  m.y + Math.sin(this.t * m.bobRate + m.phase) * m.bob,
+                  m.w, m.h);
+    }
+    c.globalAlpha = 1;
+
+    // one blit of the pre-built edge mask, rather than two gradient fills
+    c.globalCompositeOperation = "destination-out";
+    c.drawImage(this.mask, 0, 0, w, h);
+    c.globalCompositeOperation = "source-over";
+  };
+
+  Drift.prototype.still = function () { this.render(true); };
 
   global.DeadlyDrift = Drift;
 })(window);
