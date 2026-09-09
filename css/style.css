@@ -67,9 +67,8 @@ a{ color:inherit; }
   height:19.5%;
 }
 
-/* colour drift: enters from behind the window, races off the right edge.
-   Its blur is baked into the artwork in js/drift.js, not filtered here — a
-   filter on this layer would be re-rasterised on every frame. */
+/* particle drift: dots emerge from behind the window and race off the right
+   edge of the screen */
 .panel--drift{
   left:calc(50% + var(--card-w) / 2 - var(--tuck));
   right:0;

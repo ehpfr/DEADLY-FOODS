@@ -29,19 +29,23 @@ cell drifts slightly right as it rises, so the tongues lean toward the window.
 The jets travel right too, and any that leave the right side are replaced on
 the left, which is what makes the band travel without ever shortening.
 
-**Colour drift** (`js/drift.js`) is a collage of generated marks — scribbles,
-loops, halftones, blobs, filigree, rings — racing rightward, out past the edge
-of the screen. They enter from behind the window as fast as they leave on the
-right, so the band never empties.
+**Particle drift** (`js/drift.js`) is a grid of circular dots, clumped with
+gaps punched through the clumps, racing rightward off the edge of the screen.
 
-Two things make the speed read as speed rather than as a fast slideshow. Each
-frame erases only part of the one before it, so every mark leaves a decaying
-trail behind it, and every mark is soft to begin with. The softness is baked
-into the bitmaps once at startup: filtering the canvas instead would re-blur
-the whole band on every frame, which on a machine without much GPU costs more
-than everything else on the page put together. For the same reason marks are
-blitted from a pool of ready bitmaps and never rotated, so each one is a plain
-axis-aligned copy.
+There is no particle list, and nothing is spawned or recycled. Whether a cell
+holds a dot is a pure function of its coordinates in an imaginary infinite
+field: two octaves of value noise, thresholded. A coarse octave makes the
+clumps, a finer one eats the holes. The field scrolls, the visible window onto
+it moves, and cells are evaluated fresh each frame. That is what makes the band
+endless — there is no state to run out of, and no seam to line up, because the
+pattern is never stored in the first place.
+
+Dots thin out toward the edges of the band rather than fading, so every dot
+that is drawn stays fully solid. Each frame collects them into one path per
+colour and brightness, so drawing the band is a handful of fills.
+
+Set `MONO` to render it as the reference does, one ink colour across three
+brightnesses, instead of the site palette.
 
 Knobs worth knowing, all at the top of their file:
 
@@ -51,11 +55,12 @@ Knobs worth knowing, all at the top of their file:
 | `fire.js` | `LEAN` | how tall the flames run |
 | `fire.js` | `WIND` | how hard they lean toward the window |
 | `fire.js` | `JETS` | one flame tongue per this many columns |
-| `drift.js` | `SPEED` | how fast the collage travels; negate it to go left |
-| `drift.js` | `TRAIL` | share of each frame erased — lower means a longer smear |
-| `drift.js` | `BLUR` | how soft the marks are |
+| `drift.js` | `SPEED` | how fast the dots travel; negate it to go left |
+| `drift.js` | `PITCH` | grid spacing, and with it the dot size |
+| `drift.js` | `LEVEL` | occupancy threshold — higher means sparser |
+| `drift.js` | `CLUMP_X`/`CLUMP_Y` | how big a clump is, in cells |
+| `drift.js` | `MONO` | one ink colour instead of the palette |
 | `drift.js` | `COLORS` | the palette; repeated entries are drawn more often |
-| `drift.js` | `DECK` | which marks appear, how often, and how big |
 
 Both bands hold still under `prefers-reduced-motion` and pause while the tab
 is hidden.
@@ -66,8 +71,8 @@ The **logo** is drawn as SVG, an approximation of the torn-paper stamp. Put the
 real file at `assets/logo.png` and it replaces the drawing automatically —
 nothing else to change.
 
-The **fire** and **drift** bands are generated, not traced from the reference
-images, because a looping bitmap would show its seam. To use artwork instead,
+The **fire** and **particle** bands are generated, not traced from the
+reference clips, because a looping bitmap would show its seam. To use artwork instead,
 replace the `<canvas>` in the matching `.panel` with your own element.
 
 ## Type
