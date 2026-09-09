@@ -41,12 +41,20 @@ it moves, and cells are evaluated fresh each frame. That is what makes the band
 endless — there is no state to run out of, and no seam to line up, because the
 pattern is never stored in the first place.
 
-Which glyph a cell gets is not uniform noise. `RAMP` runs light to heavy, and a
-cell picks from it by how far inside its clump it sits, so clump cores come out
-dense and their edges dissolve into stray punctuation. The field crowds just
-above the threshold, so that depth is gamma-corrected on the way in; without
-that, nearly every cell lands on light punctuation and the mass never reads as
-a mass.
+The threshold is not a fixed number, and that matters more than it sounds.
+The coarse octave drifts the whole field up and down as it scrolls, so against
+a fixed cut the band pulses, and at the low points it empties out completely —
+measured on the page, ink coverage swung between 0.9% and 15.9%. So each frame
+samples what the field averages across the cells on screen, eases a running
+bias toward it, and hangs the cut off that. Coverage now holds between 13% and
+17%, at twice the mean.
+
+Which glyph a cell gets is not uniform noise either. `RAMP` runs light to heavy,
+and a cell picks from it by how far inside its clump it sits, so clump cores
+come out dense and their edges dissolve into stray punctuation. The field
+crowds just above the threshold, so that depth is gamma-corrected on the way
+in; without that, nearly every cell lands on light punctuation and the mass
+never reads as a mass.
 
 Every glyph, in every colour and brightness, is drawn once into one small
 sheet at startup. A frame is then a few hundred blits out of that sheet rather
@@ -66,7 +74,8 @@ Knobs worth knowing, all at the top of their file:
 | `fire.js` | `JETS` | one flame tongue per this many columns |
 | `drift.js` | `SPEED` | how fast the glyphs travel; negate it to go left |
 | `drift.js` | `ROW` | text row height, and with it the glyph size |
-| `drift.js` | `LEVEL` | occupancy threshold — higher means sparser |
+| `drift.js` | `OFFSET` | how full the band runs — more negative is denser |
+| `drift.js` | `EASE` | how fast the cut chases the field's own average |
 | `drift.js` | `RAMP` | the glyph set, ordered light to heavy |
 | `drift.js` | `CLUMP_X`/`CLUMP_Y` | how big a clump is, in cells |
 | `drift.js` | `MONO` | one ink colour instead of the palette |

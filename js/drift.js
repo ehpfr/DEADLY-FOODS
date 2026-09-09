@@ -21,12 +21,20 @@
   var SPEED = 620;   // css px per second, rightward
   var SINK = 0.13;   // downward drift as a share of SPEED, so it is not a belt
   var ROW = 15;      // text row height in css px; the column is 0.6 of it
-  var LEVEL = 0.50;  // occupancy threshold — higher means sparser
   var MONO = false;  // true renders the reference's white-on-black in ink
 
-  // clump size in cells, sized to hold the shapes the dot grid made
-  var CLUMP_X = 26, CLUMP_Y = 11;
-  var GRAIN_X = 5.6, GRAIN_Y = 3.1;
+  // How full the band runs. OFFSET is how far below the field's own running
+  // average the cut sits — more negative is denser — and EASE is how fast the
+  // cut chases that average. See the note on the bias in render().
+  var OFFSET = -0.09;
+  var EASE = 0.6;
+  var TAPER = 0.16;  // how hard the band thins toward its top and bottom
+  var EDGE = 0.22;   // and toward the window it emerges from
+
+  // octave sizes in cells: clumps, then the structure inside them, then grain
+  var CLUMP_X = 20, CLUMP_Y = 11;
+  var MID_X = 8, MID_Y = 4.4;
+  var GRAIN_X = 3.4, GRAIN_Y = 2.1;
 
   var RAMP = ".'^\",:;!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
@@ -63,9 +71,13 @@
     return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
   }
 
+  // Three octaves rather than two. The coarsest alone swings the whole band's
+  // density up and down as it scrolls; splitting its weight across a mid
+  // octave keeps the clump shapes while steadying how much is on screen.
   function field(col, row) {
-    return 0.62 * smooth(col / CLUMP_X, row / CLUMP_Y) +
-           0.38 * smooth(col / GRAIN_X + 31.7, row / GRAIN_Y + 11.3);
+    return 0.48 * smooth(col / CLUMP_X, row / CLUMP_Y) +
+           0.32 * smooth(col / MID_X + 7.1, row / MID_Y + 3.3) +
+           0.20 * smooth(col / GRAIN_X + 31.7, row / GRAIN_Y + 11.3);
   }
 
   /* ---------------------------------------------------------------- band --- */
@@ -75,6 +87,7 @@
     this.ctx = canvas.getContext("2d");
     this.pan = 0;
     this.panY = 0;
+    this.bias = null;
     this.w = 0;
     this.h = 0;
     this.resize();
@@ -153,6 +166,20 @@
     var firstRow = Math.floor(-this.panY / rowH) - 1;
     var lastRow = firstRow + Math.ceil(h / rowH) + 2;
 
+    // A fixed threshold makes the band pulse: the coarse octave drifts the
+    // whole field up and down as it scrolls, and at its low points the band
+    // empties out completely. So the cut is not a fixed number. Sample what
+    // the field averages across the cells on screen right now, ease a running
+    // bias toward it, and hang the threshold off that. The band then holds a
+    // steady volume no matter where in the field it happens to be.
+    var sum = 0, samples = 0;
+    for (var sc = firstCol; sc <= lastCol; sc += 3) {
+      for (var sr = firstRow; sr <= lastRow; sr += 2) { sum += field(sc, sr); samples++; }
+    }
+    var mean = samples ? sum / samples : 0.5;
+    this.bias = this.bias === null ? mean : this.bias + (mean - this.bias) * EASE;
+    var base = this.bias + OFFSET;
+
     var half = h / 2;
     var fadeW = w * 0.1;
     var nColors = MONO ? 1 : COLORS.length;
@@ -164,14 +191,17 @@
 
       // glyphs thin out toward the edges of the band rather than fading, so
       // every glyph that is drawn stays fully solid
-      var edge = x < fadeW ? (1 - x / fadeW) * 0.3 : 0;
+      var edge = x < fadeW ? (1 - x / fadeW) * EDGE : 0;
 
       for (var row = firstRow; row <= lastRow; row++) {
+        // whole rows only: a glyph sliced in half by the top or bottom of the
+        // band reads as a rendering fault, where one sliced by the side of the
+        // screen just reads as running off it
         var y = Math.round(row * rowH + this.panY);
-        if (y < -rowH || y > h) continue;
+        if (y < 0 || y + rowH > h) continue;
 
         var off = Math.abs(y + rowH / 2 - half) / half;
-        var cut = LEVEL + edge + off * off * 0.26;
+        var cut = base + edge + off * off * TAPER;
         var n = field(col, row);
         if (n < cut) continue;
 
